@@ -1,15 +1,18 @@
 """
-生成模块 - 使用 Ollama
+生成模块 - 使用 Anthropic API
 """
 
-import ollama
+import os
+from anthropic import Anthropic
 from retriever import Retriever
 
+
 class Generator:
-    def __init__(self, model_name: str = "llama3.2"):
+    def __init__(self, model_name: str = "claude-haiku-4-5"):
         self.model_name = model_name
         self.retriever = Retriever()
-        
+        self.client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
         self.system_prompt = """你是一个专业的医疗健康助手。请根据提供的参考资料回答用户的问题。
 
 重要规则：
@@ -23,7 +26,7 @@ class Generator:
     def generate(self, query: str, top_k: int = 3) -> dict:
         context = self.retriever.get_context(query, top_k)
         retrieved_docs = self.retriever.retrieve(query, top_k)
-        
+
         user_prompt = f"""参考资料：
 {context}
 
@@ -32,35 +35,34 @@ class Generator:
 请根据参考资料回答问题："""
 
         try:
-            response = ollama.chat(
+            response = self.client.messages.create(
                 model=self.model_name,
+                max_tokens=1024,
+                system=self.system_prompt,
                 messages=[
-                    {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": user_prompt}
                 ]
             )
-            answer = response['message']['content']
+            answer = response.content[0].text
         except Exception as e:
-            answer = f"生成回答时出错: {str(e)}\n\n请确保 Ollama 已启动。"
-        
+            answer = f"生成回答时出错: {str(e)}\n\n请检查 ANTHROPIC_API_KEY 是否正确配置。"
+
         return {
             "answer": answer,
             "retrieved_docs": retrieved_docs,
             "query": query
         }
 
-def check_ollama_status() -> bool:
-    try:
-        ollama.list()
-        return True
-    except Exception:
-        return False
+
+def check_api_status() -> bool:
+    """检查 API key 是否配置"""
+    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+
 
 if __name__ == "__main__":
-    if check_ollama_status():
+    if check_api_status():
         gen = Generator()
         result = gen.generate("What is diabetes?")
         print(result['answer'])
     else:
-        print("Ollama 未运行")
-
+        print("ANTHROPIC_API_KEY 未设置")

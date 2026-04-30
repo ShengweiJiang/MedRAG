@@ -1,14 +1,18 @@
 """
 Streamlit 界面
 """
+from dotenv import load_dotenv
+load_dotenv()
 
 import streamlit as st
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+# 把项目根目录加到 sys.path, 保证 import 不会出问题
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
 
-from generator import Generator, check_ollama_status
+from generator import Generator, check_api_status
 from ingestion import ingest_data
 
 st.set_page_config(page_title="MedRAG", page_icon="🏥", layout="wide")
@@ -16,21 +20,22 @@ st.set_page_config(page_title="MedRAG", page_icon="🏥", layout="wide")
 st.title("🏥 MedRAG - 医疗问答助手")
 st.caption("基于 RAG 的医学知识问答系统")
 
+# 用绝对路径, Docker 里更稳
+db_path = os.path.join(BASE_DIR, "lancedb")
+data_path = os.path.join(BASE_DIR, "data", "sample_medical_data.json")
+
 with st.sidebar:
     st.header("⚙️ 系统状态")
-    
-    if check_ollama_status():
-        st.success("✓ Ollama 已连接")
+
+    if check_api_status():
+        st.success("✓ Anthropic API 已配置")
     else:
-        st.error("✗ Ollama 未运行")
-        st.info("请先运行: ollama run llama3.2")
-    
+        st.error("✗ ANTHROPIC_API_KEY 未设置")
+        st.info("请设置环境变量 ANTHROPIC_API_KEY")
+
     st.divider()
     st.header("📚 知识库")
-    
-    db_path = "./lancedb"
-    data_path = "./data/sample_medical_data.json"
-    
+
     if os.path.exists(db_path):
         st.success("✓ 知识库已初始化")
     else:
@@ -40,17 +45,17 @@ with st.sidebar:
                 ingest_data(data_path, db_path)
             st.success("✓ 完成！")
             st.rerun()
-    
+
     st.divider()
     top_k = st.slider("检索文档数量", 1, 5, 3)
-    
+
     st.divider()
     st.warning("⚠️ 免责声明：本系统仅供参考，不能替代专业医疗建议。")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "generator" not in st.session_state and check_ollama_status() and os.path.exists(db_path):
+if "generator" not in st.session_state and check_api_status() and os.path.exists(db_path):
     st.session_state.generator = Generator()
 
 for message in st.session_state.messages:
@@ -64,15 +69,15 @@ for message in st.session_state.messages:
                     st.divider()
 
 if prompt := st.chat_input("请输入您的健康问题..."):
-    if not check_ollama_status():
-        st.error("请先启动 Ollama！")
+    if not check_api_status():
+        st.error("请先配置 ANTHROPIC_API_KEY！")
     elif not os.path.exists(db_path):
         st.error("请先初始化知识库！")
     else:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
-        
+
         with st.chat_message("assistant"):
             with st.spinner("正在思考..."):
                 result = st.session_state.generator.generate(prompt, top_k=top_k)
@@ -82,7 +87,7 @@ if prompt := st.chat_input("请输入您的健康问题..."):
                     st.markdown(f"**文档 {i}**")
                     st.text(doc['content'])
                     st.divider()
-        
+
         st.session_state.messages.append({
             "role": "assistant",
             "content": result['answer'],
@@ -97,4 +102,3 @@ if len(st.session_state.messages) == 0:
         if cols[i % 2].button(q, key=f"ex_{i}"):
             st.session_state.messages.append({"role": "user", "content": q})
             st.rerun()
-
