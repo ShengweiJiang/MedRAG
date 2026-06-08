@@ -1,5 +1,5 @@
 """
-生成模块 - 使用 Anthropic API
+genrate module using anthropic API 
 """
 
 import os
@@ -13,26 +13,26 @@ class Generator:
         self.retriever = Retriever()
         self.client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-        self.system_prompt = """你是一个专业的医疗健康助手。请根据提供的参考资料回答用户的问题。
+        self.system_prompt = """You are a professional healthcare assistant. Please answer the user's questions based on the provided reference materials.
 
-重要规则：
-1. 只根据参考资料中的信息回答，不要编造信息
-2. 如果参考资料中没有相关信息，请诚实地说"根据现有资料，我无法回答这个问题"
-3. 回答要简洁、准确、易懂
-4. 在回答末尾注明信息来源于哪个文档
+Important Rules:
+1. Only answer based on the information in the reference materials, do not fabricate information
+2. If the reference materials do not contain relevant information, please honestly say "Based on the available information, I cannot answer this question"
+3. Answers should be concise, accurate, and easy to understand
+4. Please indicate the source document at the end of each answer
 
-免责声明：本系统仅供参考，不能替代专业医疗建议。如有健康问题，请咨询医生。"""
+Disclaimer: This system is for reference only and cannot replace professional medical advice. If you have health concerns, please consult a doctor."""
 
     def generate(self, query: str, top_k: int = 3) -> dict:
         context = self.retriever.get_context(query, top_k)
         retrieved_docs = self.retriever.retrieve(query, top_k)
 
-        user_prompt = f"""参考资料：
+        user_prompt = f"""reference materials:
 {context}
 
-用户问题：{query}
+user question: {query}
 
-请根据参考资料回答问题："""
+please answer the question based on the reference materials: """
 
         try:
             response = self.client.messages.create(
@@ -45,7 +45,7 @@ class Generator:
             )
             answer = response.content[0].text
         except Exception as e:
-            answer = f"生成回答时出错: {str(e)}\n\n请检查 ANTHROPIC_API_KEY 是否正确配置。"
+            answer = f"Error generating answer: {str(e)}\n\nPlease check if ANTHROPIC_API_KEY is correctly configured."
 
         return {
             "answer": answer,
@@ -55,7 +55,7 @@ class Generator:
 
 
 def check_api_status() -> bool:
-    """检查 API key 是否配置"""
+    """Check if the API key is configured"""
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
@@ -65,4 +65,4 @@ if __name__ == "__main__":
         result = gen.generate("What is diabetes?")
         print(result['answer'])
     else:
-        print("ANTHROPIC_API_KEY 未设置")
+        print("ANTHROPIC_API_KEY is not set")

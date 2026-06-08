@@ -1,5 +1,5 @@
 """
-文档处理和向量化模块
+Document processing and vectorization module
 """
 
 import json
@@ -8,7 +8,7 @@ import lancedb
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-# 初始化 embedding 模型
+# init embedding model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 def load_sample_data(data_path: str) -> list[dict]:
@@ -17,7 +17,7 @@ def load_sample_data(data_path: str) -> list[dict]:
     return data
 
 def create_vector_store(data: list[dict], db_path: str = "./lancedb"):
-    # 准备数据
+    # prepare data
     documents = []
     for item in data:
         text = f"Question: {item['question']}\n\nAnswer: {item['answer']}"
@@ -27,24 +27,24 @@ def create_vector_store(data: list[dict], db_path: str = "./lancedb"):
             "vector": embedding
         })
     
-    # 创建 LanceDB
+    # create lancedb
     db = lancedb.connect(db_path)
     
-    # 如果表存在就删除
+    # if table exists, drop it first
     if "medical_docs" in db.table_names():
         db.drop_table("medical_docs")
     
-    # 创建新表
+    # create table and insert data
     table = db.create_table("medical_docs", documents)
-    print(f"✓ 已创建向量数据库，共 {len(documents)} 条文档")
+    print(f"✓ already inserted {len(documents)} documents")
     return table
 
 def ingest_data(data_path: str, db_path: str = "./lancedb"):
-    print("正在加载数据...")
+    print("processing data...")
     data = load_sample_data(data_path)
-    print(f"✓ 加载了 {len(data)} 条文档")
+    print(f"✓ loaded {len(data)} documents")
     
-    print("正在创建向量数据库...")
+    print("creating vector database...")
     table = create_vector_store(data, db_path)
     return table
 

@@ -1,16 +1,16 @@
 """
-检索模块
+Retrieval module using LanceDB for vector search
 """
 
 import os
 import lancedb
 from sentence_transformers import SentenceTransformer
 
-# 用绝对路径, Docker 里更稳
+# use absolute path for database
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB_PATH = os.path.join(BASE_DIR, "lancedb")
 
-# 模块级加载, 但 Dockerfile 里会预下载到镜像缓存, 启动不卡
+# module-level embedding model instance to avoid reloading
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 
@@ -35,7 +35,7 @@ class Retriever:
         docs = self.retrieve(query, top_k)
         context_parts = []
         for i, doc in enumerate(docs, 1):
-            context_parts.append(f"[文档 {i}]\n{doc['content']}")
+            context_parts.append(f"[Document {i}]\n{doc['content']}")
         return "\n\n".join(context_parts)
 
 
@@ -43,6 +43,6 @@ if __name__ == "__main__":
     retriever = Retriever()
     results = retriever.retrieve("What is diabetes?")
     for i, doc in enumerate(results, 1):
-        print(f"--- 文档 {i} ---")
+        print(f"--- Document {i} ---")
         print(doc['content'][:200])
         print()
