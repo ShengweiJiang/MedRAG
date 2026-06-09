@@ -71,10 +71,18 @@ for message in st.session_state.messages:
                     st.divider()
 
 # --- HANDLE EXAMPLES AND INPUT ---
+# 1. register a session state variable to hold the clicked example prompt
+if "example_prompt" not in st.session_state:
+    st.session_state.example_prompt = None
+
 prompt = st.chat_input("Please enter your health question...")
 
-# Fix #3: only show examples when chat is empty AND the user hasn't just submitted a prompt,
-# otherwise the examples block flashes above the first answer for one rerun.
+# 2. if an example button was clicked, it would set the session state variable, which we check here to override the prompt
+if st.session_state.example_prompt:
+    prompt = st.session_state.example_prompt
+    st.session_state.example_prompt = None  # reset after use
+
+# 3. only show example buttons if there are no messages yet and no prompt, to avoid cluttering the UI after the user starts interacting
 if len(st.session_state.messages) == 0 and not prompt:
     st.markdown("### 💡 Try these questions:")
     cols = st.columns(2)
@@ -85,9 +93,11 @@ if len(st.session_state.messages) == 0 and not prompt:
         "What is hypertension?"
     ]
     for i, q in enumerate(examples):
-        # If an example is clicked, assign it to the prompt variable
+        # when an example button is clicked, set the session state variable and trigger a rerun to update the prompt
         if cols[i % 2].button(q, key=f"ex_{i}"):
-            prompt = q
+            st.session_state.example_prompt = q
+            st.rerun()  # trigger a rerun to update the prompt with the example question
+            
 
 # --- GENERATION LOGIC ---
 if prompt:
